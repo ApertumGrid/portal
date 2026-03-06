@@ -33,20 +33,25 @@
             const password = document.getElementById('password').value;
             const msg = document.getElementById('msg');
             msg.innerText = "⏳ Connecting...";
+            
             const urlParams = new URLSearchParams(window.location.search);
             let ref = urlParams.get('ref') || localStorage.getItem('gtb_ref_code');
 
             const { data, error } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password,
-                options: { data: { referral_code: ref } }
+                options: { 
+                    data: { referral_code: ref },
+                    // FORCES REDIRECT TO SHADOW ENGINE DASHBOARD
+                    emailRedirectTo: 'https://apertumgrid.github.io/portal/dashboard.html'
+                }
             });
 
             if (error) {
                 msg.innerText = "❌ Error: " + error.message;
                 msg.style.color = "#ff4d4d";
             } else {
-                msg.innerText = "✅ Account Created! Check your email to confirm, then go to your dashboard.";
+                msg.innerText = "✅ Account Created! Check your email to confirm and access your dashboard.";
                 msg.style.color = "#22c55e";
             }
         }
