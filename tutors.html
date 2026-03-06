@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find a Tutor | Global Board</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --brand: #06b6d4; --dark: #0f172a; --card: #1e293b; }
+        body { background: var(--dark); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1max)); gap: 20px; max-width: 1000px; margin: 0 auto; }
+        .tutor-card { background: var(--card); border-radius: 15px; padding: 20px; border: 1px solid #334155; transition: 0.3s; }
+        .tutor-card:hover { border-color: var(--brand); transform: translateY(-5px); }
+        .name { font-size: 1.4rem; color: var(--brand); margin-bottom: 10px; display: block; }
+        .bio { color: #94a3b8; line-height: 1.5; margin-bottom: 20px; min-height: 60px; }
+        .wa-btn { background: #22c55e; color: white; text-decoration: none; padding: 12px; border-radius: 8px; display: block; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div style="text-align:center; margin-bottom: 40px;">
+    <h1>Available Tutors</h1>
+    <p>Connect directly with verified experts via WhatsApp.</p>
+</div>
+
+<div class="grid" id="board">
+    </div>
+
+<script>
+    const SUPABASE_URL = 'https://njhjxmnxmmodhlpxkdaz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_ox4QWCRam_IsX-vXZ1tu7A_Kyj-zCgQ';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadBoard() {
+        // ONLY select tutors where is_live is TRUE
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('is_live', true);
+
+        if (error) return;
+
+        const board = document.getElementById('board');
+        board.innerHTML = data.length ? '' : '<p style="grid-column: 1/-1; text-align:center;">No tutors active right now. Check back soon!</p>';
+
+        data.forEach(tutor => {
+            const div = document.createElement('div');
+            div.className = 'tutor-card';
+            div.innerHTML = `
+                <span class="name">${tutor.full_name}</span>
+                <p class="bio">${tutor.bio || 'Professional Tutor'}</p>
+                <a href="https://wa.me/${tutor.whatsapp_number}" target="_blank" class="wa-btn">
+                    Chat on WhatsApp
+                </a>
+            `;
+            board.appendChild(div);
+        });
+    }
+
+    loadBoard();
+</script>
+</body>
+</html>
