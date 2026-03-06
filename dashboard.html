@@ -4,15 +4,117 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tutor Dashboard | Global Tutor Board</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
     <style>
         :root { --primary: #3b82f6; --accent: #06b6d4; --dark: #0b1120; --text: #f8fafc; }
-        body { background-color: var(--dark); color: var(--text); font-family: sans-serif; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 15px; border: 1px solid #334155; }
-        .status-bar { padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; }
-        .status-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; }
-        .status-live { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        .btn-save { background: var(--accent); color: var(--dark); padding: 15px; width: 100%; border: none; border-radius: 50px; font-weight: 800; cursor: pointer; transition: 0.3s; }
-        .btn-save:hover { opacity: 0.8; }
-        #debug-log { font-size: 11px; color: #64748b; margin-top: 20px; text-align: left
+        body { background-color: var(--dark); color: var(--text); font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 500px; background: #1e293b; padding: 30px; border-radius: 15px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; font-size: 16px; }
+        .btn-save { background: var(--accent); color: var(--dark); padding: 15px; width: 100%; border: none; border-radius: 50px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+        #status-msg { margin-top: 15px; font-weight: bold; min-height: 20px; }
+        .debug-panel { margin-top: 30px; font-size: 10px; color: #64748b; text-align: left; width: 100%; max-width: 500px; border-top: 1px solid #334155; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin-top:0;">Tutor Profile Settings</h2>
+    <p id="user-email" style="font-size: 0.8rem; color: var(--accent); margin-bottom: 20px;">Checking session...</p>
+    
+    <div id="editor-ui" style="display: none;">
+        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">Full Name / Display Title</label>
+        <input type="text" id="fullName" placeholder="e.g. Teacher Maria - IELTS Expert">
+        
+        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">WhatsApp (International Format)</label>
+        <input type="text" id="whatsapp" placeholder="e.g. 639171234567">
+        
+        <label style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">Your Bio</label>
+        <textarea id="bio" rows="6" placeholder="Describe your experience..."></textarea>
+        
+        <button class="btn-save" onclick="saveProfile()">SAVE CHANGES</button>
+    </div>
+
+    <div id="status-msg"></div>
+</div>
+
+<div class="debug-panel" id="debug">Log: Initializing...</div>
+
+<script>
+    const SUPABASE_URL = 'https://njhjxmnxmmodhlpxkdaz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_ox4QWCRam_IsX-vXZ1tu7A_Kyj-zCgQ';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function log(m) { 
+        console.log(m); 
+        document.getElementById('debug').innerText += "\n> " + m; 
+    }
+
+    // Stop line breaks in bio
+    document.getElementById('bio').addEventListener('input', function() {
+        this.value = this.value.replace(/\r?\n|\r/g, " ");
+    });
+
+    async function checkUser() {
+        log("Checking Supabase Auth...");
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+
+        if (error || !user) {
+            log("No active session found.");
+            document.getElementById('user-email').innerText = "⚠️ Please login via the Join Beta page.";
+            document.getElementById('status-msg').innerHTML = '<a href="join-beta.html" style="color:var(--accent)">Go to Sign Up</a>';
+            return;
+        }
+
+        log("User identified: " + user.email);
+        document.getElementById('user-email').innerText = "Logged in as: " + user.email;
+        document.getElementById('editor-ui').style.display = "block";
+        
+        fetchProfile(user.id);
+    }
+
+    async function fetchProfile(userId) {
+        log("Fetching profile from database...");
+        let { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+        
+        if (error) {
+            log("No profile row found. This is normal for new users.");
+        } else if (data) {
+            log("Data loaded successfully.");
+            document.getElementById('fullName').value = data.full_name || '';
+            document.getElementById('whatsapp').value = data.whatsapp_number || '';
+            document.getElementById('bio').value = data.bio || '';
+        }
+    }
+
+    async function saveProfile() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const status = document.getElementById('status-msg');
+        
+        status.innerText = "⏳ Saving...";
+        status.style.color = "white";
+
+        const updates = {
+            id: user.id,
+            full_name: document.getElementById('fullName').value,
+            whatsapp_number: document.getElementById('whatsapp').value,
+            bio: document.getElementById('bio').value,
+            updated_at: new Date()
+        };
+
+        const { error } = await supabaseClient.from('profiles').upsert(updates);
+
+        if (error) {
+            status.innerText = "❌ Error: " + error.message;
+            status.style.color = "#ff4d4d";
+            log("Save Error: " + error.message);
+        } else {
+            status.innerText = "✅ Profile Saved!";
+            status.style.color = "#22c55e";
+            log("Save Successful.");
+        }
+    }
+
+    checkUser();
+</script>
+</body>
+</html>
