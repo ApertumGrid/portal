@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Approval | Shadow Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #ef4444; --dark: #0b1120; --card: #1e293b; --text: #f8fafc; }
+        body { background: var(--dark); color: var(--text); font-family: sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .tutor-card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid #64748b; display: flex; justify-content: space-between; align-items: center; }
+        .live { border-left-color: #22c55e !important; }
+        .info { flex-grow: 1; margin-right: 20px; }
+        .status-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 10px; text-transform: uppercase; font-weight: bold; }
+        .btn-approve { background: #22c55e; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; }
+        .btn-hide { background: #f59e0b; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Admin Approval Portal</h1>
+    <p>Manage pending tutor applications below.</p>
+    <hr style="border: 0.5px solid #334155; margin-bottom: 20px;">
+    <div id="tutor-list">Loading applicants...</div>
+</div>
+
+<script>
+    const SUPABASE_URL = 'https://njhjxmnxmmodhlpxkdaz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_ox4QWCRam_IsX-vXZ1tu7A_Kyj-zCgQ';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function loadTutors() {
+        const { data, error } = await supabaseClient.from('profiles').select('*').order('updated_at', { ascending: false });
+        if (error) { console.error(error); return; }
+        
+        const list = document.getElementById('tutor-list');
+        list.innerHTML = '';
+
+        data.forEach(tutor => {
+            const card = document.createElement('div');
+            card.className = `tutor-card ${tutor.is_live ? 'live' : ''}`;
+            card.innerHTML = `
+                <div class="info">
+                    <strong>${tutor.full_name || 'No Name'}</strong> 
+                    <span class="status-badge" style="background:${tutor.is_live ? '#14532d' : '#450a0a'}">
+                        ${tutor.is_live ? 'LIVE' : 'PENDING'}
+                    </span>
+                    <br><small>${tutor.whatsapp_number || 'No WhatsApp'}</small>
+                    <p style="font-size: 0.9rem; color: #94a3b8;">${tutor.bio || 'No bio provided.'}</p>
+                </div>
+                <div>
+                    <button class="${tutor.is_live ? 'btn-hide' : 'btn-approve'}" onclick="toggleStatus('${tutor.id}', ${tutor.is_live})">
+                        ${tutor.is_live ? 'Hide' : 'Approve'}
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    async function toggleStatus(id, currentStatus) {
+        const { error } = await supabaseClient.from('profiles').update({ is_live: !currentStatus }).eq('id', id);
+        if (error) { alert("Error updating: " + error.message); }
+        else { loadTutors(); }
+    }
+
+    loadTutors();
+</script>
+</body>
+</html>
